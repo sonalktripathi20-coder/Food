@@ -1,0 +1,116 @@
+/* Custom CSS & Styles for FoodConnect Bharat */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary-orange: #f97316;
+    --primary-green: #10b981;
+    --emerald-dark: #059669;
+    --emergency-red: #ef4444;
+    --bhandara-amber: #f59e0b;
+    --kitchen-blue: #3b82f6;
+    --offline-purple: #8b5cf6;
+    --slate-900: #0f172a;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+}
+
+.custom-leaflet-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease-in-out;
+}
+
+.custom-leaflet-marker:hover {
+    transform: scale(1.18);
+    z-index: 1000 !important;
+}
+
+.marker-green {
+    background-color: #10b981;
+    border: 3px solid #ffffff;
+}
+
+.marker-red {
+    background-color: #ef4444;
+    border: 3px solid #ffffff;
+}
+
+.marker-orange {
+    background-color: #f59e0b;
+    border: 3px solid #ffffff;
+}
+
+.marker-blue {
+    background-color: #3b82f6;
+    border: 3px solid #ffffff;
+}
+
+.marker-purple {
+    background-color: #8b5cf6;
+    border: 3px solid #ffffff;
+}
+
+.marker-teal {
+    background-color: #14b8a6;
+    border: 3px solid #ffffff;
+}
+
+.marker-volunteer {
+    background-color: #0284c7;
+    border: 3px solid #ffffff;
+    font-size: 16px;
+}
+
+#toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast-item {
+    pointer-events: auto;
+    animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toast-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+#main-map {
+    height: calc(100vh - 175px);
+    width: 100%;
+    z-index: 1;
+}
