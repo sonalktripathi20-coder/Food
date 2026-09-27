@@ -1,0 +1,382 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RoleType {
+  DONOR
+  BENEFICIARY
+  VOLUNTEER
+  NGO
+  ADMIN
+}
+
+enum DietaryType {
+  VEG
+  JAIN
+  NON_VEG
+}
+
+enum UrgencyLevel {
+  NORMAL
+  URGENT
+  EMERGENCY
+}
+
+enum PackagingStatus {
+  SEALED
+  GOOD
+  DAMAGED
+  UNKNOWN
+}
+
+enum FoodLifecycleState {
+  CREATED
+  AVAILABLE
+  MATCHED
+  CONFIRMATION_PENDING
+  CONFIRMED
+  DELIVERY_ASSIGNED
+  PICKUP_PENDING
+  PICKUP_VERIFICATION
+  VERIFIED
+  PICKED_UP
+  IN_TRANSIT
+  ARRIVED
+  DELIVERED
+  BENEFICIARY_CONFIRMED
+  SUCCESSFUL
+  CANCELLED
+  EXPIRED
+  REJECTED
+  PICKUP_FAILED
+  DELIVERY_FAILED
+  ESCALATED_TO_NGO
+  PARTIALLY_DISTRIBUTED
+}
+
+enum DeliveryOption {
+  DONOR_SELF
+  VOLUNTEER
+  NGO_SUPPORT
+}
+
+enum MissionStatus {
+  CREATED
+  RECRUITING
+  VOLUNTEERS_ASSIGNED
+  PICKUP_IN_PROGRESS
+  FOOD_VERIFIED
+  DISTRIBUTION_IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum NotificationPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+  EMERGENCY
+}
+
+model User {
+  id               String        @id @default(uuid())
+  name             String
+  email            String        @unique
+  passwordHash     String
+  phone            String?
+  role             RoleType      @default(DONOR)
+  address          String?
+  latitude         Float?
+  longitude        Float?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  donations        FoodDonation[]
+  requests         FoodRequest[]
+  volunteerTasks   Delivery[]    @relation("VolunteerDeliveries")
+  notifications    Notification[]
+  eventsOrganized  FoodEvent[]
+  missionsLed      FoodRescueMission[] @relation("MissionLeaders")
+  reliability      ReliabilityMetrics?
+  reportsFiled     SafetyReport[]     @relation("ReportAuthor")
+  auditLogs        AuditLog[]
+}
+
+model FoodDonation {
+  id                   String             @id @default(uuid())
+  donorId              String
+  donor                User               @relation(fields: [donorId], references: [id])
+  foodName             String
+  foodCategory         String
+  totalServings        Int
+  allocatedServings    Int                @default(0)
+  remainingServings    Int
+  dietary              DietaryType
+  noOnionGarlic        Boolean            @default(false)
+  usableRemainingHours Float
+  isEmergency          Boolean            @default(false)
+  emergencyAlertSent   Boolean            @default(false)
+  pickupAddress        String
+  latitude             Float
+  longitude            Float
+  pickupDeadline       DateTime
+  packagingCondition   PackagingStatus    @default(GOOD)
+  photoUrl             String?
+  ingredients          String?
+  allergens            String?
+  notes                String?
+  lifecycleState       FoodLifecycleState @default(CREATED)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  allocations          QuantityAllocation[]
+  deliveries           Delivery[]
+  missionId            String?
+  mission              FoodRescueMission? @relation(fields: [missionId], references: [id])
+}
+
+model QuantityAllocation {
+  id               String       @id @default(uuid())
+  donationId       String
+  donation         FoodDonation @relation(fields: [donationId], references: [id])
+  requestId        String?
+  request          FoodRequest? @relation(fields: [requestId], references: [id])
+  allocatedServings Int
+  recipientName    String
+  allocatedAt      DateTime     @default(now())
+  batchId          String?
+  batch            DeliveryBatch? @relation(fields: [batchId], references: [id])
+}
+
+model FoodRequest {
+  id                 String             @id @default(uuid())
+  beneficiaryId      String
+  beneficiary        User               @relation(fields: [beneficiaryId], references: [id])
+  locationAddress    String
+  latitude           Float
+  longitude          Float
+  peopleCount        Int
+  dietary            DietaryType
+  noOnionGarlic      Boolean            @default(false)
+  urgency            UrgencyLevel       @default(NORMAL)
+  requiredTime       DateTime
+  priorityGroup      String?
+  notes              String?
+  contactPhone       String
+  lifecycleState     FoodLifecycleState @default(CREATED)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  allocations        QuantityAllocation[]
+  deliveries         Delivery[]
+}
+
+model DeliveryBatch {
+  id               String               @id @default(uuid())
+  batchNumber      String               @unique // e.g. #FCB-1024
+  donorName        String
+  pickupAddress    String
+  latitude         Float
+  longitude        Float
+  totalServings    Int
+  remainingServings Int
+  assignedDriver   String?
+  status           FoodLifecycleState   @default(DELIVERY_ASSIGNED)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  stops            BatchStop[]
+  allocations      QuantityAllocation[]
+}
+
+model BatchStop {
+  id               String             @id @default(uuid())
+  batchId          String
+  batch            DeliveryBatch      @relation(fields: [batchId], references: [id])
+  stopOrder        Int
+  destinationName  String
+  address          String
+  latitude         Float
+  longitude        Float
+  servingsCount    Int
+  status           FoodLifecycleState @default(PICKUP_PENDING)
+  deliveredAt      DateTime?
+}
+
+model FoodRescueMission {
+  id                 String             @id @default(uuid())
+  missionCode        String             @unique // e.g. #FRM-901
+  title              String
+  leaderId           String
+  leader             User               @relation("MissionLeaders", fields: [leaderId], references: [id])
+  pickupLocation     String
+  latitude           Float
+  longitude          Float
+  totalServings      Int
+  distributedServings Int               @default(0)
+  volunteersNeeded   Int                @default(3)
+  volunteersAssigned Int                @default(0)
+  status             MissionStatus      @default(CREATED)
+  remainingHours     Float
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  donations          FoodDonation[]
+}
+
+model RecurringDonor {
+  id                  String      @id @default(uuid())
+  donorName           String
+  donorType           String      // Restaurant, Hotel, Bakery, Canteen
+  typicalSurplusRange String      // e.g. 20-40 meals
+  frequency           String      // Daily, Mon-Fri, Weekends
+  typicalAvailableTime String     // e.g. 10:00 PM
+  dietary             DietaryType @default(VEG)
+  address             String
+  latitude            Float
+  longitude           Float
+  active              Boolean     @default(true)
+  createdAt           DateTime    @default(now())
+}
+
+model OrganizationVerification {
+  id                String             @id @default(uuid())
+  organizationName  String
+  orgType           String             // NGO, Community Kitchen, Shelter
+  address           String
+  status            VerificationStatus @default(PENDING)
+  verifiedAt        DateTime?
+  verifiedByAdmin   String?
+  documentsUrl      String?
+  serviceAreas      String
+  createdAt         DateTime           @default(now())
+}
+
+model ReliabilityMetrics {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  deliveriesAccepted Int      @default(0)
+  deliveriesCompleted Int     @default(0)
+  emergencyRescues   Int      @default(0)
+  cancellations      Int      @default(0)
+  averageResponseMins Float   @default(0)
+  updatedAt          DateTime @default(now())
+}
+
+model SafetyReport {
+  id             String   @id @default(uuid())
+  authorId       String
+  author         User     @relation("ReportAuthor", fields: [authorId], references: [id])
+  targetEntityId String
+  category       String   // Unsafe Food, Fraud, Fake Request, Harassment
+  description    String
+  status         String   @default("OPEN") // OPEN, INVESTIGATING, RESOLVED, DISMISSED
+  adminNotes     String?
+  createdAt      DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String   // FOOD_CREATED, MATCH_CONFIRMED, PICKUP_VERIFIED, QUANTITY_SPLIT, MISSION_STARTED
+  entityType  String
+  entityId    String
+  details     String
+  timestamp   DateTime @default(now())
+}
+
+model Delivery {
+  id                     String             @id @default(uuid())
+  donationId             String
+  donation               FoodDonation       @relation(fields: [donationId], references: [id])
+  requestId              String?
+  request                FoodRequest?       @relation(fields: [requestId], references: [id])
+  volunteerId            String?
+  volunteer              User?              @relation("VolunteerDeliveries", fields: [volunteerId], references: [id])
+  deliveryOption         DeliveryOption     @default(VOLUNTEER)
+  state                  FoodLifecycleState @default(DELIVERY_ASSIGNED)
+  escalatedToNgo         Boolean            @default(false)
+  pickupVerified         Boolean            @default(false)
+  beneficiaryConfirmed   Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+}
+
+model FoodEvent {
+  id               String       @id @default(uuid())
+  organizerId      String
+  organizer        User         @relation(fields: [organizerId], references: [id])
+  eventName        String
+  eventType        String
+  address          String
+  latitude         Float
+  longitude        Float
+  eventDate        DateTime
+  startTime        String
+  endTime          String
+  estimatedMeals   Int
+  dietary          DietaryType  @default(VEG)
+  contactPhone     String
+  surplusExpected  Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+}
+
+model CommunityKitchen {
+  id               String       @id @default(uuid())
+  name             String
+  organization     String
+  address          String
+  latitude         Float
+  longitude        Float
+  openingHours     String
+  capacityServings Int
+  currentAvailable Int
+  dietary          DietaryType  @default(VEG)
+  contactPhone     String
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+}
+
+model OfflineArea {
+  id                  String      @id @default(uuid())
+  areaName            String
+  address             String
+  latitude            Float
+  longitude           Float
+  populationServed    Int
+  estimatedNeedPeople Int
+  mealRequirement     String
+  connectivityStatus  String
+  contactPerson       String?
+  preferredDietary    DietaryType @default(VEG)
+  notes               String?
+  mappedBy            String
+  createdAt           DateTime    @default(now())
+}
+
+model Notification {
+  id        String               @id @default(uuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String
+  priority  NotificationPriority @default(NORMAL)
+  read      Boolean              @default(false)
+  createdAt DateTime             @default(now())
+}
